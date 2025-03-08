@@ -18,9 +18,10 @@ public class TabListVariables {
 
     private static double getTPS(MinecraftServer server) {
         double mspt = getMSPT(server);
-        if (mspt == 0.0D)
-            return 20.0D;
-        return Math.min(1000.0D / mspt, 20.0D);
+        if (mspt == 0.0D) return 20.0D;
+
+        double tps = Math.min(1000.0D / mspt, 20.0D);
+        return Math.round(tps * 10.0D) / 10.0D;
     }
 
     private static double getMSPT(MinecraftServer server) {
