@@ -1,6 +1,5 @@
 package com.sennecools.tablist;
 
-import dev.ftb.mods.ftbranks.api.FTBRanksAPI;
 import dev.ftb.mods.ftbranks.api.Rank;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
