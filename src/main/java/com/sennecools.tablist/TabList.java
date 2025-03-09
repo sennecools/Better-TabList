@@ -21,7 +21,7 @@ import org.slf4j.Logger;
 public class TabList {
     public static final String MOD_ID = "tablist";
 
-    private static final Logger LOGGER = LogUtils.getLogger();
+    public static final Logger LOGGER = LogUtils.getLogger();
 
     public TabList(IEventBus modEventBus, ModContainer modContainer) {
         // Register the common setup event listener.

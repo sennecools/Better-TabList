@@ -17,13 +17,14 @@ public class Config {
 
     // Define configuration category with placeholder explanations.
     static {
-        BUILDER.comment("Placeholders for TabList mod:\n" +
-                "  #N         - New line\n" +
-                "  #TPS       - Ticks per second\n" +
-                "  #MSPT      - Milliseconds per tick\n" +
-                "  #PLAYERCOUNT - Number of players online\n" +
-                "  #MEMORY    - Memory usage\n" +
-                "  #UPTIME   - Server uptime");
+        BUILDER.comment("""
+                Placeholders for TabList mod:
+                  #N         - New line
+                  #TPS       - Ticks per second
+                  #MSPT      - Milliseconds per tick
+                  #PLAYERCOUNT - Number of players online
+                  #MEMORY    - Memory usage
+                  #UPTIME   - Server uptime""");
         BUILDER.push("TabList");
     }
 
