@@ -35,17 +35,18 @@ public class TabListUpdater {
         }
         tickCounter = 0;
 
-        // Process the header and footer templates with current server data.
-        String newHeader = TabListVariables.tablistChars(Config.templateHeader);
-        String newFooter = TabListVariables.tablistChars(Config.templateFooter);
+        // Iterate over all players currently on the server
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            // Generate new header and footer strings for the player
+            String newHeader = TabListVariables.tablistChars(Config.templateHeader, player);
+            String newFooter = TabListVariables.tablistChars(Config.templateFooter, player);
 
-        // Only update if there is a change.
-        if (!newHeader.equals(lastHeader) || !newFooter.equals(lastFooter)) {
-            lastHeader = newHeader;
-            lastFooter = newFooter;
-
-            // Update each player's tab list.
-            for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            // Check if the new header or footer is different from the last updated values
+            if (!newHeader.equals(lastHeader) || !newFooter.equals(lastFooter)) {
+                // Update the last header and footer values
+                lastHeader = newHeader;
+                lastFooter = newFooter;
+                // Send the updated header and footer to the player
                 player.connection.send(new ClientboundTabListPacket(Component.literal(newHeader), Component.literal(newFooter)));
             }
         }

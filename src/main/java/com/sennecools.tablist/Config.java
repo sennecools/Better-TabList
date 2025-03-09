@@ -11,7 +11,7 @@ import net.neoforged.neoforge.common.ModConfigSpec;
  * This class defines the configuration values for the header, footer, and update interval.
  * It also provides a mechanism to reload these values when the config changes.
  */
-@EventBusSubscriber(modid = "tablist", bus = EventBusSubscriber.Bus.MOD)
+@EventBusSubscriber(modid = TabList.MOD_ID, bus = EventBusSubscriber.Bus.MOD)
 public class Config {
     private static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
 

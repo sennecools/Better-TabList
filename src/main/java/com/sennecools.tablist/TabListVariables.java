@@ -1,6 +1,7 @@
 package com.sennecools.tablist;
 
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.server.ServerLifecycleHooks;
 
 import java.lang.management.ManagementFactory;
@@ -19,7 +20,7 @@ public class TabListVariables {
      * @param template The raw template string containing placeholders.
      * @return The processed string with placeholders replaced and color codes converted.
      */
-    public static String tablistChars(String template) {
+    public static String tablistChars(String template, ServerPlayer player) {
         MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
         if (server == null || template == null) return "";
 
@@ -31,6 +32,7 @@ public class TabListVariables {
         placeholders.put("#PLAYERCOUNT", String.valueOf(getPlayerCount(server)));
         placeholders.put("#MEMORY", getMemoryUsage());
         placeholders.put("#UPTIME", getServerUptime());
+        placeholders.put("#PING", String.valueOf(getPlayerPing(player)));
         placeholders.put("#N", "\n");
 
         // Replace each placeholder in the template with its corresponding value.
@@ -97,6 +99,16 @@ public class TabListVariables {
         return days > 0
                 ? String.format("%d days %02d:%02d:%02d", days, hours, minutes, seconds)
                 : String.format("%02d:%02d:%02d", hours, minutes, seconds);
+    }
+
+    /**
+     * Retrieves the ping (latency) of a player.
+     *
+     * @param player The player whose ping is to be retrieved.
+     * @return The player's ping in milliseconds.
+     */
+    private static int getPlayerPing(ServerPlayer player) {
+        return player.connection.latency();
     }
 
     /**
