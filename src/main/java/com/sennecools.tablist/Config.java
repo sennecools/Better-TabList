@@ -5,32 +5,54 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.event.config.ModConfigEvent;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
+/**
+ * Manages the configuration for the TabList mod.
+ * <p>
+ * This class defines the configuration values for the header, footer, and update interval.
+ * It also provides a mechanism to reload these values when the config changes.
+ */
 @EventBusSubscriber(modid = "tablist", bus = EventBusSubscriber.Bus.MOD)
 public class Config {
     private static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
 
+    // Define configuration category with placeholder explanations.
     static {
-        BUILDER.comment("#N next line\n#TPS show ticks per second\n#MSPT ms per tick\n#PLAYERCOUNT show how many players are online\n");
+        BUILDER.comment("Placeholders for TabList mod:\n" +
+                "  #N         - New line\n" +
+                "  #TPS       - Ticks per second\n" +
+                "  #MSPT      - Milliseconds per tick\n" +
+                "  #PLAYERCOUNT - Number of players online\n" +
+                "  #MEMORY    - Memory usage\n" +
+                "  #UPTIME   - Server uptime");
         BUILDER.push("TabList");
     }
 
+    // Configuration values for header, footer, and update interval.
     private static final ModConfigSpec.ConfigValue<String> HEADER = BUILDER.define("header", "#N             &a&lYOUR SERVER           #N&a&l&m    #N");
-
-    private static final ModConfigSpec.ConfigValue<String> FOOTER = BUILDER.define("footer", "#N&f&e#PLAYERCOUNT#N&f&e#TPS &f| &e#MSPT#N");
+    private static final ModConfigSpec.ConfigValue<String> FOOTER = BUILDER.define("footer", "&fOnline: &e#PLAYERCOUNT #N&7| TPS: &a#TPS &7| #NMemory: &b#MEMORY &7| Uptime: &d#UPTIME");
+    private static final ModConfigSpec.IntValue UPDATE_INTERVAL = BUILDER.defineInRange("update_interval", 500, 1, 10000);
 
     static {
         BUILDER.pop();
     }
 
-    static final ModConfigSpec SPEC = BUILDER.build();
+    public static final ModConfigSpec SPEC = BUILDER.build();
 
-    public static String header;
+    // Raw template values loaded from the configuration (unmodified).
+    public static String templateHeader;
+    public static String templateFooter;
+    public static int updateInterval;
 
-    public static String footer;
-
+    /**
+     * Reloads the configuration values when the mod configuration is loaded or reloaded.
+     *
+     * @param event The configuration event.
+     */
     @SubscribeEvent
     static void onLoad(ModConfigEvent event) {
-        header = (String)HEADER.get();
-        footer = (String)FOOTER.get();
+        templateHeader = HEADER.get();
+        templateFooter = FOOTER.get();
+        updateInterval = UPDATE_INTERVAL.get();
+        System.out.println("TabList config reloaded. Update interval: " + updateInterval + " ms");
     }
 }
