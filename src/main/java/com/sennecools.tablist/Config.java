@@ -29,8 +29,8 @@ public class Config {
     }
 
     // Configuration values for header, footer, and update interval.
-    private static final ModConfigSpec.ConfigValue<String> HEADER = BUILDER.define("header", "#N             &a&lYOUR SERVER           #N&a&l&m    #N");
-    private static final ModConfigSpec.ConfigValue<String> FOOTER = BUILDER.define("footer", "&fOnline: &e#PLAYERCOUNT #N&7| TPS: &a#TPS &7| #NMemory: &b#MEMORY &7| Uptime: &d#UPTIME");
+    private static final ModConfigSpec.ConfigValue<String> HEADER = BUILDER.define("header", "#N             &c&lYOUR SERVER NAME           #N&a&l&m    #N");
+    private static final ModConfigSpec.ConfigValue<String> FOOTER = BUILDER.define("footer", "&fOnline: &e#PLAYERCOUNT #N&7| TPS: &a#TPS &7 MSPT: &a#MSPT &7 | #NMemory: &b#MEMORY &7| Uptime: &d#UPTIME");
     private static final ModConfigSpec.IntValue UPDATE_INTERVAL = BUILDER.defineInRange("update_interval", 500, 1, 10000);
 
     static {
