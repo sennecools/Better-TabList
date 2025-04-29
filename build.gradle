@@ -21,6 +21,10 @@ repositories {
     mavenLocal()
 
     maven {
+        url = uri("https://maven.saps.dev/releases/")
+    }
+
+    maven {
         name = "Architectury"
         url "https://maven.architectury.dev/"
         content {
@@ -29,14 +33,10 @@ repositories {
             includeGroup "me.shedaniel.cloth"
         }
     }
-    maven {
-        name = "FTB Ranks"
-        url = uri("https://maven.saps.dev/releases/")
-        content {
-            includeGroup "dev.ftb.mods"
-        }
-    }
+
+    mavenCentral()
 }
+
 
 base {
     archivesName = mod_id
