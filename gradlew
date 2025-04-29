@@ -250,3 +250,5 @@ eval "set -- $(
     )" '"$@"'
 
 exec "$JAVACMD" "$@"
+
+# Added to force Git to detect permission change
