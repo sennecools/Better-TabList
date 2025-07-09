@@ -1,60 +1,87 @@
 package com.sennecools.tablist;
 
-            import net.minecraft.network.chat.Component;
-            import net.minecraft.network.protocol.game.ClientboundPlayerInfoUpdatePacket;
-            import net.minecraft.network.protocol.game.ClientboundTabListPacket;
-            import net.minecraft.server.MinecraftServer;
-            import net.minecraft.server.level.ServerPlayer;
-            import net.neoforged.bus.api.SubscribeEvent;
-            import net.neoforged.neoforge.event.tick.ServerTickEvent;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.game.ClientboundPlayerInfoUpdatePacket;
+import net.minecraft.network.protocol.game.ClientboundTabListPacket;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
-            /**
-             * Updates the player's tab list periodically.
-             * <p>
-             * Checks the server status and updates the tab list header and footer only when they change.
-             */
-            public class TabListUpdater {
-                private String lastHeader = "";
-                private String lastFooter = "";
-                private int tickCounter = 0;
+/**
+ * Periodically updates the tab list header, footer, and player display names.
+ * Sends an update to every online player at a fixed interval.
+ * Designed for NeoForge 1.21.+
+ */
+public class TabListUpdater {
 
-                /**
-                 * Called every server tick after game logic updates.
-                 * Updates the tab list for players if the header or footer has changed.
-                 *
-                 * @param event The post-tick event containing the server tick info.
-                 */
-                @SubscribeEvent
-                public void onServerTick(ServerTickEvent.Post event) {
-                    MinecraftServer server = event.getServer();
-                    if (server == null) return;
+    /** Counter tracking ticks since last update. */
+    private int ticksSinceLastUpdate = 0;
 
-                    tickCounter++;
-                    int updateTicks = Config.updateInterval / 50;
-                    if (tickCounter < updateTicks) {
-                        return;
-                    }
-                    tickCounter = 0;
+    /**
+     * Called after each server tick to determine if it's time to refresh the tab list.
+     *
+     * @param event the server post-tick event
+     */
+    @SubscribeEvent
+    public void onServerTick(ServerTickEvent.Post event) {
+        MinecraftServer server = event.getServer();
+        if (server == null) {
+            return;
+        }
 
-                    // Iterate over all players currently on the server
-                    for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-                        // Generate new header and footer strings for the player
-                        String newHeader = TabListVariables.tablistChars(Config.templateHeader, player);
-                        String newFooter = TabListVariables.tablistChars(Config.templateFooter, player);
+        // Increment tick counter and check if update interval reached
+        ticksSinceLastUpdate++;
+        int updateIntervalTicks = Config.updateInterval / 50; // convert ms to ticks
+        if (ticksSinceLastUpdate < updateIntervalTicks) {
+            return;
+        }
+        // Reset counter for next cycle
+        ticksSinceLastUpdate = 0;
 
-                        // Check if the new header or footer is different from the last updated values
-                        if (!newHeader.equals(lastHeader) || !newFooter.equals(lastFooter)) {
-                            // Update the last header and footer values
-                            lastHeader = newHeader;
-                            lastFooter = newFooter;
-                            // Send the updated header and footer to the player
-                            player.connection.send(new ClientboundTabListPacket(Component.literal(newHeader), Component.literal(newFooter)));
-                        }
+        // Broadcast refresh to all connected players
+        server.getPlayerList().getPlayers().forEach(this::refreshPlayerTab);
+    }
 
-                        // Update the player's display name with their rank
-                        String playerNameWithRank = TabListVariables.getPlayerRank(player) + " " + player.getName().getString();
-                        player.setCustomName(Component.literal(playerNameWithRank));
-                        player.connection.send(new ClientboundPlayerInfoUpdatePacket(ClientboundPlayerInfoUpdatePacket.Action.UPDATE_DISPLAY_NAME, player));
-                    }
-                }
-            }
+    /**
+     * Refreshes the tab list header/footer and display name for a single player.
+     *
+     * @param player the player to update
+     */
+    private void refreshPlayerTab(ServerPlayer player) {
+        updateTabListHeaderFooter(player);
+        updatePlayerDisplayName(player);
+    }
+
+    /**
+     * Sends a tab list packet with updated header and footer.
+     *
+     * @param player the player to send the packet to
+     */
+    private void updateTabListHeaderFooter(ServerPlayer player) {
+        String header = TabListVariables.tablistChars(Config.templateHeader, player);
+        String footer = TabListVariables.tablistChars(Config.templateFooter, player);
+        ClientboundTabListPacket packet =
+            new ClientboundTabListPacket(
+                Component.literal(header),
+                Component.literal(footer)
+            );
+        player.connection.send(packet);
+    }
+
+    /**
+     * Updates the player's display name in the tab list with their rank prefix.
+     *
+     * @param player the player to update
+     */
+    private void updatePlayerDisplayName(ServerPlayer player) {
+        String displayName = " " + player.getName().getString();
+        player.setCustomName(Component.literal(displayName));
+        ClientboundPlayerInfoUpdatePacket packet =
+            new ClientboundPlayerInfoUpdatePacket(
+                ClientboundPlayerInfoUpdatePacket.Action.UPDATE_DISPLAY_NAME,
+                player
+            );
+        player.connection.send(packet);
+    }
+}

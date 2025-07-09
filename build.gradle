@@ -155,9 +155,6 @@ dependencies {
     // For more info:
     // http://www.gradle.org/docs/current/userguide/artifact_dependencies_tutorial.html
     // http://www.gradle.org/docs/current/userguide/dependency_management.html
-    api "dev.architectury:architectury-neoforge:${rootProject.architectury_api_version}"
-    implementation "curse.maven:ftb-library-forge-404465:6711324"
-    implementation "curse.maven:ftb-ranks-forge-314905:6431744"
 }
 
 // This block of code expands all declared replace properties in the specified resource targets.
