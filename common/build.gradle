@@ -1,0 +1,37 @@
+plugins {
+    id 'multiloader-common'
+    id 'net.neoforged.moddev'
+}
+
+neoForge {
+    neoFormVersion = neo_form_version
+    parchment {
+        minecraftVersion = parchment_minecraft
+        mappingsVersion = parchment_version
+    }
+}
+
+dependencies {
+    compileOnly "org.spongepowered:mixin:0.8.5"
+    compileOnly "com.electronwill.night-config:toml:${nightconfig_version}"
+    compileOnly "com.electronwill.night-config:core:${nightconfig_version}"
+    compileOnly "dev.architectury:architectury:${architectury_api_version}"
+    compileOnly "curse.maven:ftb-library-forge-404465:6711324"
+    compileOnly "curse.maven:ftb-ranks-forge-314905:6431744"
+}
+
+configurations {
+    commonJava {
+        canBeResolved = false
+        canBeConsumed = true
+    }
+    commonResources {
+        canBeResolved = false
+        canBeConsumed = true
+    }
+}
+
+artifacts {
+    commonJava(sourceSets.main.java.sourceDirectories.singleFile)
+    commonResources(sourceSets.main.resources.sourceDirectories.singleFile)
+}

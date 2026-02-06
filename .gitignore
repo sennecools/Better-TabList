@@ -24,4 +24,5 @@ runs
 run-data
 
 repo
+net/
 .vscode/launch.json

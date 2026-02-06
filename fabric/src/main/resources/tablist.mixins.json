@@ -1,0 +1,11 @@
+{
+  "required": true,
+  "package": "com.sennecools.tablist.fabric.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "ServerPlayerMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
