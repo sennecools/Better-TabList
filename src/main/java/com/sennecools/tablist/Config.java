@@ -54,6 +54,6 @@ public class Config {
         templateHeader = HEADER.get();
         templateFooter = FOOTER.get();
         updateInterval = UPDATE_INTERVAL.get();
-        System.out.println("TabList config reloaded. Update interval: " + updateInterval + " ms");
+        TabList.LOGGER.info("TabList config reloaded. Update interval: {} ms", updateInterval);
     }
 }

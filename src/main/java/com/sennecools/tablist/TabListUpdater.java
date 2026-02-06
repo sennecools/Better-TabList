@@ -1,22 +1,21 @@
 package com.sennecools.tablist;
 
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.protocol.game.ClientboundPlayerInfoUpdatePacket;
 import net.minecraft.network.protocol.game.ClientboundTabListPacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
-/**
- * Periodically updates the tab list header, footer, and player display names.
- * Sends an update to every online player at a fixed interval.
- * Designed for NeoForge 1.21.+
- */
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+
 public class TabListUpdater {
 
-    /** Counter tracking ticks since last update. */
     private int ticksSinceLastUpdate = 0;
+    private final Map<UUID, String> lastSentContent = new ConcurrentHashMap<>();
 
     /**
      * Called after each server tick to determine if it's time to refresh the tab list.
@@ -43,24 +42,16 @@ public class TabListUpdater {
         server.getPlayerList().getPlayers().forEach(this::refreshPlayerTab);
     }
 
-    /**
-     * Refreshes the tab list header/footer and display name for a single player.
-     *
-     * @param player the player to update
-     */
     private void refreshPlayerTab(ServerPlayer player) {
-        updateTabListHeaderFooter(player);
-        updatePlayerDisplayName(player);
-    }
-
-    /**
-     * Sends a tab list packet with updated header and footer.
-     *
-     * @param player the player to send the packet to
-     */
-    private void updateTabListHeaderFooter(ServerPlayer player) {
         String header = TabListVariables.tablistChars(Config.templateHeader, player);
         String footer = TabListVariables.tablistChars(Config.templateFooter, player);
+
+        String combined = header + "\0" + footer;
+        String previous = lastSentContent.put(player.getUUID(), combined);
+        if (combined.equals(previous)) {
+            return;
+        }
+
         ClientboundTabListPacket packet =
             new ClientboundTabListPacket(
                 Component.literal(header),
@@ -69,19 +60,8 @@ public class TabListUpdater {
         player.connection.send(packet);
     }
 
-    /**
-     * Updates the player's display name in the tab list with their rank prefix.
-     *
-     * @param player the player to update
-     */
-    private void updatePlayerDisplayName(ServerPlayer player) {
-        String displayName = " " + player.getName().getString();
-        player.setCustomName(Component.literal(displayName));
-        ClientboundPlayerInfoUpdatePacket packet =
-            new ClientboundPlayerInfoUpdatePacket(
-                ClientboundPlayerInfoUpdatePacket.Action.UPDATE_DISPLAY_NAME,
-                player
-            );
-        player.connection.send(packet);
+    @SubscribeEvent
+    public void onPlayerLogout(PlayerEvent.PlayerLoggedOutEvent event) {
+        lastSentContent.remove(event.getEntity().getUUID());
     }
 }

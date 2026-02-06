@@ -5,14 +5,15 @@ import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.server.ServerLifecycleHooks;
 
 import java.lang.management.ManagementFactory;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.regex.Pattern;
 
 /**
  * Provides utility methods to process tab list templates by replacing placeholders
  * with real-time server data.
  */
 public class TabListVariables {
+
+    private static final Pattern COLOR_CODE_PATTERN = Pattern.compile("&([0-9a-fA-Fk-oK-OrR])");
 
     /**
      * Processes the tab list template and replaces placeholders with actual server data.
@@ -24,44 +25,38 @@ public class TabListVariables {
         MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
         if (server == null || template == null) return "";
 
-        // Start with the raw template and define placeholders for replacement.
         String output = template;
-        Map<String, String> placeholders = new HashMap<>();
-        placeholders.put("#TPS", String.format("%.1f", getTPS(server)));
-        placeholders.put("#MSPT", String.format("%.1f", getMSPT(server)));
-        placeholders.put("#PLAYERCOUNT", String.valueOf(getPlayerCount(server)));
-        placeholders.put("#MEMORY", getMemoryUsage());
-        placeholders.put("#UPTIME", getServerUptime());
-        placeholders.put("#PING", String.valueOf(getPlayerPing(player)));
-        placeholders.put("#N", "\n");
 
-        // Replace each placeholder in the template with its corresponding value.
-        for (Map.Entry<String, String> entry : placeholders.entrySet()) {
-            output = output.replace(entry.getKey(), entry.getValue());
+        // Only compute and replace placeholders that are actually present in the template.
+        if (output.contains("#TPS") || output.contains("#MSPT")) {
+            double mspt = getMSPT(server);
+            if (output.contains("#MSPT")) {
+                output = output.replace("#MSPT", String.format("%.1f", mspt));
+            }
+            if (output.contains("#TPS")) {
+                double tps = mspt == 0.0 ? 20.0 : Math.min(1000.0 / mspt, 20.0);
+                output = output.replace("#TPS", String.format("%.1f", tps));
+            }
         }
+        if (output.contains("#PLAYERCOUNT")) {
+            output = output.replace("#PLAYERCOUNT", String.valueOf(getPlayerCount(server)));
+        }
+        if (output.contains("#MEMORY")) {
+            output = output.replace("#MEMORY", getMemoryUsage());
+        }
+        if (output.contains("#UPTIME")) {
+            output = output.replace("#UPTIME", getServerUptime());
+        }
+        if (output.contains("#PING")) {
+            output = output.replace("#PING", String.valueOf(getPlayerPing(player)));
+        }
+        output = output.replace("#N", "\n");
 
         return convertColorCodes(output);
     }
 
-    /**
-     * Calculates the ticks per second (TPS) based on the server's average tick time.
-     *
-     * @param server The current Minecraft server instance.
-     * @return The TPS value.
-     */
-    private static double getTPS(MinecraftServer server) {
-        double mspt = getMSPT(server);
-        return mspt == 0.0 ? 20.0 : Math.round(Math.min(1000.0 / mspt, 20.0) * 10.0) / 10.0;
-    }
-
-    /**
-     * Calculates the milliseconds per tick (MSPT) for the server.
-     *
-     * @param server The current Minecraft server instance.
-     * @return The MSPT value.
-     */
     private static double getMSPT(MinecraftServer server) {
-        return Math.round(server.getAverageTickTimeNanos() / 100000.0) / 10.0;
+        return server.getAverageTickTimeNanos() / 1_000_000.0;
     }
 
     /**
@@ -118,6 +113,6 @@ public class TabListVariables {
      * @return The text with color codes replaced.
      */
     private static String convertColorCodes(String text) {
-        return text.replace("&", "§");
+        return COLOR_CODE_PATTERN.matcher(text).replaceAll("§$1");
     }
 }
