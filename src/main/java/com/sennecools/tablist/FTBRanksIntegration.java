@@ -27,6 +27,18 @@ public class FTBRanksIntegration {
     }
 
     /**
+     * Returns the power value of the player's highest-power active rank,
+     * or 0 if no ranks are found.
+     */
+    public static int getPlayerRankPower(ServerPlayer player) {
+        List<Rank> ranks = FTBRanksAPI.manager().getRanks(player);
+        if (!ranks.isEmpty()) {
+            return ranks.stream().mapToInt(Rank::getPower).max().orElse(0);
+        }
+        return 0;
+    }
+
+    /**
      * Reads the {@code ftbranks.name_format} permission for the player and
      * replaces {@code {name}} with the player's real name.
      *
