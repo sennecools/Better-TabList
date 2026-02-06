@@ -152,6 +152,12 @@ dependencies {
     // Example project dependency using a sister or child project:
     // implementation project(":myproject")
 
+    // FTB Ranks integration (optional soft dependency — compileOnly so they don't
+    // load at runtime and register items/blocks the client doesn't have)
+    compileOnly "dev.architectury:architectury-neoforge:${architectury_api_version}"
+    compileOnly "curse.maven:ftb-library-forge-404465:6711324"
+    compileOnly "curse.maven:ftb-ranks-forge-314905:6431744"
+
     // For more info:
     // http://www.gradle.org/docs/current/userguide/artifact_dependencies_tutorial.html
     // http://www.gradle.org/docs/current/userguide/dependency_management.html

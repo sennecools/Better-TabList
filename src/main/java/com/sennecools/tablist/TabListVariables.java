@@ -2,6 +2,7 @@ package com.sennecools.tablist;
 
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.server.ServerLifecycleHooks;
 
 import java.lang.management.ManagementFactory;
@@ -50,9 +51,47 @@ public class TabListVariables {
         if (output.contains("#PING")) {
             output = output.replace("#PING", String.valueOf(getPlayerPing(player)));
         }
+        if (output.contains("#RANK")) {
+            output = output.replace("#RANK", getPlayerRank(player));
+        }
         output = output.replace("#N", "\n");
 
         return convertColorCodes(output);
+    }
+
+    /**
+     * Resolves the display name for a player in the tab list.
+     * <p>
+     * If {@code enableFTBRanksFormatting} is true and FTB Ranks is loaded, uses the
+     * {@code ftbranks.name_format} permission. Otherwise, uses the configured
+     * {@code displayNameFormat} template with {@code {name}} and {@code {rank}} placeholders.
+     */
+    public static String resolveDisplayName(ServerPlayer player) {
+        if (Config.enableFTBRanksFormatting && isFTBRanksLoaded()) {
+            String formatted = FTBRanksIntegration.getFormattedDisplayName(player);
+            if (formatted != null) {
+                return convertColorCodes(formatted);
+            }
+        }
+
+        String format = Config.displayNameFormat;
+        if (format == null) {
+            format = "{name}";
+        }
+        String result = format.replace("{name}", player.getGameProfile().getName());
+        result = result.replace("{rank}", getPlayerRank(player));
+        return convertColorCodes(result);
+    }
+
+    private static String getPlayerRank(ServerPlayer player) {
+        if (isFTBRanksLoaded()) {
+            return FTBRanksIntegration.getPlayerRankName(player);
+        }
+        return "";
+    }
+
+    private static boolean isFTBRanksLoaded() {
+        return ModList.get().isLoaded("ftbranks");
     }
 
     private static double getMSPT(MinecraftServer server) {
@@ -112,7 +151,7 @@ public class TabListVariables {
      * @param text The text with color codes using '&'.
      * @return The text with color codes replaced.
      */
-    private static String convertColorCodes(String text) {
+    static String convertColorCodes(String text) {
         return COLOR_CODE_PATTERN.matcher(text).replaceAll("§$1");
     }
 }

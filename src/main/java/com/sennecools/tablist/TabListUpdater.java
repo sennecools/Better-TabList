@@ -48,16 +48,30 @@ public class TabListUpdater {
 
         String combined = header + "\0" + footer;
         String previous = lastSentContent.put(player.getUUID(), combined);
-        if (combined.equals(previous)) {
-            return;
+        if (!combined.equals(previous)) {
+            ClientboundTabListPacket packet =
+                new ClientboundTabListPacket(
+                    Component.literal(header),
+                    Component.literal(footer)
+                );
+            player.connection.send(packet);
         }
 
-        ClientboundTabListPacket packet =
-            new ClientboundTabListPacket(
-                Component.literal(header),
-                Component.literal(footer)
-            );
-        player.connection.send(packet);
+        // Triggers the TabListNameFormat event and broadcasts UPDATE_DISPLAY_NAME
+        // packet if the name changed (NeoForge handles the diffing internally)
+        player.refreshTabListName();
+    }
+
+    /**
+     * Fired by NeoForge whenever a player's tab list display name is resolved.
+     * Sets the display name based on FTB Ranks formatting or the config template.
+     */
+    @SubscribeEvent
+    public void onTabListNameFormat(PlayerEvent.TabListNameFormat event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            String displayName = TabListVariables.resolveDisplayName(player);
+            event.setDisplayName(Component.literal(displayName));
+        }
     }
 
     @SubscribeEvent
