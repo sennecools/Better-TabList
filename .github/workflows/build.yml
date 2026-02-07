@@ -24,5 +24,18 @@ jobs:
       - name: Grant execute permission to Gradle wrapper
         run: chmod +x gradlew
 
-      - name: Build with Gradle
-        run: ./gradlew build
+      - name: Build all variants
+        run: |
+          ./gradlew \
+            ":1.21-fabric:build" ":1.21-neoforge:build" \
+            ":1.21.1-fabric:build" ":1.21.1-neoforge:build" \
+            ":1.21.2-fabric:build" ":1.21.2-neoforge:build" \
+            ":1.21.3-fabric:build" ":1.21.3-neoforge:build" \
+            ":1.21.4-fabric:build" ":1.21.4-neoforge:build" \
+            ":1.21.5-fabric:build" ":1.21.5-neoforge:build" \
+            ":1.21.6-fabric:build" ":1.21.6-neoforge:build" \
+            ":1.21.7-fabric:build" ":1.21.7-neoforge:build" \
+            ":1.21.8-fabric:build" ":1.21.8-neoforge:build" \
+            ":1.21.9-fabric:build" ":1.21.9-neoforge:build" \
+            ":1.21.10-fabric:build" ":1.21.10-neoforge:build" \
+            ":1.21.11-fabric:build" ":1.21.11-neoforge:build"

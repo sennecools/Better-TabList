@@ -17,6 +17,13 @@ out
 build
 .gradle
 
+# stonecutter
+versions/*/src
+versions/*/build
+
+# secrets
+local.properties
+
 # other
 eclipse
 run

@@ -1,0 +1,143 @@
+plugins {
+    id 'dev.kikugie.stonecutter'
+    id 'net.neoforged.moddev' version '2.0.140'
+    id 'me.modmuss50.mod-publish-plugin'
+    id 'java-library'
+}
+
+stonecutter {
+    def loader = 'neoforge'
+    constants['fabric'] = false
+    constants['neoforge'] = true
+}
+
+base {
+    archivesName = "${mod_id}-neoforge-${stonecutter.current.version}"
+}
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(21)
+    withSourcesJar()
+}
+
+repositories {
+    mavenCentral()
+    maven {
+        name = 'ParchmentMC'
+        url = 'https://maven.parchmentmc.org/'
+    }
+    maven {
+        name = 'CurseMaven'
+        url = 'https://cursemaven.com'
+    }
+    maven {
+        name = 'Architectury'
+        url = 'https://maven.architectury.dev/'
+    }
+    maven {
+        name = 'FTB'
+        url = 'https://maven.saps.dev/releases/'
+    }
+}
+
+neoForge {
+    version = neoforge_version
+    parchment {
+        minecraftVersion = parchment_minecraft
+        mappingsVersion = parchment_version
+    }
+    runs {
+        configureEach {
+            systemProperty('neoforge.enabledGameTestNamespaces', mod_id)
+            logLevel = org.slf4j.event.Level.DEBUG
+            ideName = "NeoForge ${it.name.capitalize()} (${project.path})"
+        }
+        client {
+            client()
+        }
+        server {
+            server()
+            programArgument '--nogui'
+        }
+    }
+    mods {
+        "${mod_id}" {
+            sourceSet sourceSets.main
+        }
+    }
+}
+
+dependencies {
+    compileOnly "dev.architectury:architectury-neoforge:${architectury_api_version}"
+    compileOnly "curse.maven:ftb-library-forge-404465:6711324"
+    compileOnly "curse.maven:ftb-ranks-forge-314905:6431744"
+}
+
+sourceSets.main.resources.srcDir rootProject.file('src/main/resources-neoforge')
+
+var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
+    var replaceProperties = [
+            minecraft_version      : minecraft_version,
+            minecraft_version_range: minecraft_version_range,
+            neoforge_version       : neoforge_version,
+            neo_version_range      : neo_version_range,
+            loader_version_range   : loader_version_range,
+            mod_id                 : mod_id,
+            mod_name               : mod_name,
+            mod_license            : mod_license,
+            version                : version,
+            mod_authors            : mod_authors,
+            mod_description        : mod_description,
+    ]
+    inputs.properties replaceProperties
+    expand replaceProperties
+    from rootProject.file("src/main/templates")
+    into "build/generated/sources/modMetadata"
+}
+sourceSets.main.resources.srcDir generateModMetadata
+neoForge.ideSyncTask generateModMetadata
+
+// Exclude Fabric-specific resources
+processResources {
+    exclude 'fabric.mod.json'
+    exclude 'tablist.mixins.json'
+}
+
+jar {
+    manifest {
+        attributes([
+                'Specification-Title'   : mod_name,
+                'Specification-Vendor'  : mod_authors,
+                'Specification-Version' : project.jar.archiveVersion,
+                'Implementation-Title'  : project.name,
+                'Implementation-Version': project.jar.archiveVersion,
+                'Implementation-Vendor' : mod_authors,
+                'Built-On-Minecraft'    : minecraft_version,
+        ])
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+publishMods {
+    file = jar.archiveFile
+    changelog = rootProject.file("CHANGELOG.md").exists() ? rootProject.file("CHANGELOG.md").text : "Release ${project.version}"
+    type = STABLE
+    modLoaders.add("neoforge")
+    displayName = "${mod_name} ${project.version} for ${minecraft_version} [NeoForge]"
+
+    def localProps = new Properties()
+    def localFile = rootProject.file("local.properties")
+    if (localFile.exists()) localProps.load(localFile.newReader())
+    def modrinthToken = providers.environmentVariable("MODRINTH_TOKEN").getOrNull() ?: localProps.getProperty("MODRINTH_TOKEN")
+
+    dryRun = modrinthToken == null
+
+    modrinth {
+        projectId = "3o3inmWM"
+        accessToken = modrinthToken
+        minecraftVersions.add(minecraft_version)
+    }
+}

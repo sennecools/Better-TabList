@@ -1,4 +1,2 @@
-plugins {
-    id 'fabric-loom' version '1.9.2' apply false
-    id 'net.neoforged.moddev' version '2.0.78' apply false
-}
+// This file is the central script placeholder.
+// All nodes are mapped to loader-specific scripts via mapBuilds in settings.gradle.
