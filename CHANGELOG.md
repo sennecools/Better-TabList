@@ -1,5 +1,7 @@
-## What's New in 1.4
+## What's New in 1.5
 
-- Added `/tablist reload` command to hot-reload the config without restarting the server (requires op)
-- Migrated to Stonecutter for multi-version support
-- Dropped Forge support (Fabric and NeoForge only)
+- Added gradient color support with two syntax options:
+  - MiniMessage-style: `<gradient:#FF0000:#0000FF>text</gradient>` (supports 2+ color stops)
+  - TAB-style: `<#FF0000>text</#0000FF>` (2 colors)
+- Gradients preserve formatting codes like `&l` (bold), `&o` (italic), etc.
+- Improved color code parsing with proper Component-based text rendering

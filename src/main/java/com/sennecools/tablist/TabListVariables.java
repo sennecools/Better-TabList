@@ -13,6 +13,8 @@ import net.minecraft.server.level.ServerPlayer;
 import java.lang.management.ManagementFactory;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -20,6 +22,9 @@ public class TabListVariables {
 
     private static final Pattern HEX_COLOR_PATTERN = Pattern.compile("&#([0-9a-fA-F]{6})");
     private static final Pattern COLOR_CODE_PATTERN = Pattern.compile("&([0-9a-fA-Fk-oK-OrR])");
+    private static final Pattern GRADIENT_MINIMESSAGE_PATTERN = Pattern.compile("<gradient:(#[0-9a-fA-F]{6}(?::#[0-9a-fA-F]{6})+)>(.*?)</gradient>");
+    private static final Pattern GRADIENT_TAB_PATTERN = Pattern.compile("<(#[0-9a-fA-F]{6})>(.*?)</(#[0-9a-fA-F]{6})>");
+    private static final Pattern HEX_CODE_IN_TEXT_PATTERN = Pattern.compile("&x(&[0-9a-fA-F]){6}");
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
 
@@ -191,6 +196,8 @@ public class TabListVariables {
     }
 
     static String convertColorCodes(String text) {
+        text = processGradients(text);
+
         Matcher hexMatcher = HEX_COLOR_PATTERN.matcher(text);
         StringBuilder sb = new StringBuilder();
         while (hexMatcher.find()) {
@@ -330,5 +337,142 @@ public class TabListVariables {
             case OBFUSCATED -> style.withObfuscated(true);
             default -> style;
         };
+    }
+
+    private static String processGradients(String text) {
+        // Process MiniMessage-style gradients first: <gradient:#FF0000:#0000FF>text</gradient>
+        Matcher miniMatcher = GRADIENT_MINIMESSAGE_PATTERN.matcher(text);
+        StringBuilder sb = new StringBuilder();
+        while (miniMatcher.find()) {
+            String colorsStr = miniMatcher.group(1);
+            String innerText = miniMatcher.group(2);
+            String[] colorHexes = colorsStr.split(":");
+            List<int[]> stops = new ArrayList<>();
+            for (String hex : colorHexes) {
+                stops.add(parseHexColor(hex));
+            }
+            miniMatcher.appendReplacement(sb, Matcher.quoteReplacement(applyGradient(innerText, stops)));
+        }
+        miniMatcher.appendTail(sb);
+        text = sb.toString();
+
+        // Process TAB-style gradients: <#FF0000>text</#0000FF>
+        Matcher tabMatcher = GRADIENT_TAB_PATTERN.matcher(text);
+        sb = new StringBuilder();
+        while (tabMatcher.find()) {
+            String startHex = tabMatcher.group(1);
+            String innerText = tabMatcher.group(2);
+            String endHex = tabMatcher.group(3);
+            List<int[]> stops = new ArrayList<>();
+            stops.add(parseHexColor(startHex));
+            stops.add(parseHexColor(endHex));
+            tabMatcher.appendReplacement(sb, Matcher.quoteReplacement(applyGradient(innerText, stops)));
+        }
+        tabMatcher.appendTail(sb);
+
+        return sb.toString();
+    }
+
+    private static int[] parseHexColor(String hex) {
+        if (hex.startsWith("#")) {
+            hex = hex.substring(1);
+        }
+        return new int[]{
+                Integer.parseInt(hex.substring(0, 2), 16),
+                Integer.parseInt(hex.substring(2, 4), 16),
+                Integer.parseInt(hex.substring(4, 6), 16)
+        };
+    }
+
+    private static String applyGradient(String innerText, List<int[]> stops) {
+        String stripped = HEX_CODE_IN_TEXT_PATTERN.matcher(innerText).replaceAll("");
+
+        List<Character> visibleChars = new ArrayList<>();
+        List<String> formattingBefore = new ArrayList<>();
+        StringBuilder currentFormatting = new StringBuilder();
+        String activeFormatting = "";
+
+        for (int i = 0; i < stripped.length(); i++) {
+            if (stripped.charAt(i) == '&' && i + 1 < stripped.length()) {
+                char code = stripped.charAt(i + 1);
+                if ((code >= '0' && code <= '9') || (code >= 'a' && code <= 'f') || (code >= 'A' && code <= 'F')
+                        || (code >= 'k' && code <= 'o') || (code >= 'K' && code <= 'O')
+                        || code == 'r' || code == 'R') {
+                    if ((code >= '0' && code <= '9') || (code >= 'a' && code <= 'f')
+                            || (code >= 'A' && code <= 'F') || code == 'r' || code == 'R') {
+                        activeFormatting = "";
+                    } else {
+                        activeFormatting += "&" + code;
+                    }
+                    currentFormatting.append("&").append(code);
+                    i++;
+                    continue;
+                }
+            }
+            visibleChars.add(stripped.charAt(i));
+            formattingBefore.add(currentFormatting.toString());
+            currentFormatting = new StringBuilder();
+        }
+
+        int charCount = visibleChars.size();
+        if (charCount == 0) {
+            return stripped;
+        }
+
+        List<String> activeFormattingAtChar = new ArrayList<>();
+        String runningFormatting = "";
+        for (int i = 0; i < stripped.length(); i++) {
+            if (stripped.charAt(i) == '&' && i + 1 < stripped.length()) {
+                char code = stripped.charAt(i + 1);
+                if ((code >= '0' && code <= '9') || (code >= 'a' && code <= 'f') || (code >= 'A' && code <= 'F')
+                        || code == 'r' || code == 'R') {
+                    runningFormatting = "";
+                    i++;
+                    continue;
+                } else if ((code >= 'k' && code <= 'o') || (code >= 'K' && code <= 'O')) {
+                    runningFormatting += "\u00A7" + code;
+                    i++;
+                    continue;
+                }
+            }
+            activeFormattingAtChar.add(runningFormatting);
+        }
+
+        StringBuilder result = new StringBuilder();
+        int segments = stops.size() - 1;
+
+        for (int i = 0; i < charCount; i++) {
+            double t = charCount == 1 ? 0.0 : (double) i / (charCount - 1);
+
+            double segmentPos = t * segments;
+            int segIndex = Math.min((int) segmentPos, segments - 1);
+            double localT = segmentPos - segIndex;
+
+            int[] startColor = stops.get(segIndex);
+            int[] endColor = stops.get(segIndex + 1);
+
+            int r = (int) Math.round(startColor[0] + (endColor[0] - startColor[0]) * localT);
+            int g = (int) Math.round(startColor[1] + (endColor[1] - startColor[1]) * localT);
+            int b = (int) Math.round(startColor[2] + (endColor[2] - startColor[2]) * localT);
+
+            r = Math.max(0, Math.min(255, r));
+            g = Math.max(0, Math.min(255, g));
+            b = Math.max(0, Math.min(255, b));
+
+            String hexColor = String.format("\u00A7x\u00A7%x\u00A7%x\u00A7%x\u00A7%x\u00A7%x\u00A7%x",
+                    (r >> 4) & 0xF, r & 0xF,
+                    (g >> 4) & 0xF, g & 0xF,
+                    (b >> 4) & 0xF, b & 0xF);
+
+            result.append(hexColor);
+
+            if (i < activeFormattingAtChar.size()) {
+                result.append(activeFormattingAtChar.get(i));
+            }
+
+            result.append(visibleChars.get(i));
+        }
+
+        return result.toString();
     }
 }
