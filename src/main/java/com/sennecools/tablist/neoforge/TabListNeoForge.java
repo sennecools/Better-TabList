@@ -40,7 +40,7 @@ public class TabListNeoForge {
     public void onTabListNameFormat(PlayerEvent.TabListNameFormat event) {
         if (event.getEntity() instanceof ServerPlayer player) {
             String displayName = TabListVariables.resolveDisplayName(player);
-            event.setDisplayName(Component.literal(displayName));
+            event.setDisplayName(TabListVariables.parseColoredText(displayName));
         }
     }
 

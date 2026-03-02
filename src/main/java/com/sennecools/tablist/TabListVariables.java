@@ -2,6 +2,11 @@ package com.sennecools.tablist;
 
 import com.sennecools.tablist.config.TabListConfig;
 import com.sennecools.tablist.platform.Services;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.network.chat.Style;
+import net.minecraft.network.chat.TextColor;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 
@@ -199,5 +204,131 @@ public class TabListVariables {
         hexMatcher.appendTail(sb);
 
         return COLOR_CODE_PATTERN.matcher(sb.toString()).replaceAll("\u00A7$1");
+    }
+
+    /**
+     * Parses a string with legacy color codes (§X and §x§R§R§G§G§B§B) and returns a proper Component.
+     * This is necessary because Component.literal() does NOT parse formatting codes.
+     */
+    public static Component parseColoredText(String text) {
+        if (text == null || text.isEmpty()) {
+            return Component.empty();
+        }
+
+        MutableComponent result = Component.empty();
+        StringBuilder currentText = new StringBuilder();
+        Style currentStyle = Style.EMPTY;
+
+        int i = 0;
+        while (i < text.length()) {
+            char c = text.charAt(i);
+
+            if (c == '\u00A7' && i + 1 < text.length()) {
+                // Append any accumulated text with current style
+                if (currentText.length() > 0) {
+                    result.append(Component.literal(currentText.toString()).withStyle(currentStyle));
+                    currentText = new StringBuilder();
+                }
+
+                char code = text.charAt(i + 1);
+
+                // Check for hex color: §x§R§R§G§G§B§B
+                if ((code == 'x' || code == 'X') && i + 13 < text.length()) {
+                    StringBuilder hexBuilder = new StringBuilder();
+                    boolean validHex = true;
+                    for (int j = 0; j < 6; j++) {
+                        int idx = i + 2 + (j * 2);
+                        if (idx + 1 < text.length() && text.charAt(idx) == '\u00A7') {
+                            char hexChar = text.charAt(idx + 1);
+                            if (isHexChar(hexChar)) {
+                                hexBuilder.append(hexChar);
+                            } else {
+                                validHex = false;
+                                break;
+                            }
+                        } else {
+                            validHex = false;
+                            break;
+                        }
+                    }
+
+                    if (validHex && hexBuilder.length() == 6) {
+                        int rgb = Integer.parseInt(hexBuilder.toString(), 16);
+                        currentStyle = currentStyle.withColor(TextColor.fromRgb(rgb));
+                        i += 14; // Skip §x + 6 * (§ + hex char)
+                        continue;
+                    }
+                }
+
+                // Standard color codes
+                ChatFormatting formatting = getFormatting(code);
+                if (formatting != null) {
+                    if (formatting.isColor()) {
+                        // Reset formatting modifiers when applying a new color
+                        currentStyle = Style.EMPTY.withColor(formatting);
+                    } else if (formatting == ChatFormatting.RESET) {
+                        currentStyle = Style.EMPTY;
+                    } else {
+                        // Apply formatting modifier (bold, italic, etc.)
+                        currentStyle = applyFormatting(currentStyle, formatting);
+                    }
+                    i += 2;
+                    continue;
+                }
+            }
+
+            currentText.append(c);
+            i++;
+        }
+
+        // Append any remaining text
+        if (currentText.length() > 0) {
+            result.append(Component.literal(currentText.toString()).withStyle(currentStyle));
+        }
+
+        return result;
+    }
+
+    private static boolean isHexChar(char c) {
+        return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
+    }
+
+    private static ChatFormatting getFormatting(char code) {
+        return switch (Character.toLowerCase(code)) {
+            case '0' -> ChatFormatting.BLACK;
+            case '1' -> ChatFormatting.DARK_BLUE;
+            case '2' -> ChatFormatting.DARK_GREEN;
+            case '3' -> ChatFormatting.DARK_AQUA;
+            case '4' -> ChatFormatting.DARK_RED;
+            case '5' -> ChatFormatting.DARK_PURPLE;
+            case '6' -> ChatFormatting.GOLD;
+            case '7' -> ChatFormatting.GRAY;
+            case '8' -> ChatFormatting.DARK_GRAY;
+            case '9' -> ChatFormatting.BLUE;
+            case 'a' -> ChatFormatting.GREEN;
+            case 'b' -> ChatFormatting.AQUA;
+            case 'c' -> ChatFormatting.RED;
+            case 'd' -> ChatFormatting.LIGHT_PURPLE;
+            case 'e' -> ChatFormatting.YELLOW;
+            case 'f' -> ChatFormatting.WHITE;
+            case 'k' -> ChatFormatting.OBFUSCATED;
+            case 'l' -> ChatFormatting.BOLD;
+            case 'm' -> ChatFormatting.STRIKETHROUGH;
+            case 'n' -> ChatFormatting.UNDERLINE;
+            case 'o' -> ChatFormatting.ITALIC;
+            case 'r' -> ChatFormatting.RESET;
+            default -> null;
+        };
+    }
+
+    private static Style applyFormatting(Style style, ChatFormatting formatting) {
+        return switch (formatting) {
+            case BOLD -> style.withBold(true);
+            case ITALIC -> style.withItalic(true);
+            case UNDERLINE -> style.withUnderlined(true);
+            case STRIKETHROUGH -> style.withStrikethrough(true);
+            case OBFUSCATED -> style.withObfuscated(true);
+            default -> style;
+        };
     }
 }

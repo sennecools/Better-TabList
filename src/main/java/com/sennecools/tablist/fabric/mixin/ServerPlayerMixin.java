@@ -16,7 +16,7 @@ public abstract class ServerPlayerMixin {
     private void tablist$getTabListDisplayName(CallbackInfoReturnable<Component> cir) {
         ServerPlayer self = (ServerPlayer) (Object) this;
         String displayName = TabListVariables.resolveDisplayName(self);
-        cir.setReturnValue(Component.literal(displayName));
+        cir.setReturnValue(TabListVariables.parseColoredText(displayName));
     }
 }
 //?}
