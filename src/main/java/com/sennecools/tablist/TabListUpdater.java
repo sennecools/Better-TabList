@@ -2,6 +2,7 @@ package com.sennecools.tablist;
 
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.sennecools.tablist.config.TabListConfig;
+import com.sennecools.tablist.metrics.ServerMetricsResolver;
 import com.sennecools.tablist.platform.Services;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -14,6 +15,7 @@ import net.minecraft.world.scores.Scoreboard;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -41,6 +43,7 @@ public class TabListUpdater {
     }
 
     public void resetState() {
+        ServerMetricsResolver.reset();
         lastSentContent.clear();
         headerFrameIndex = 0;
         footerFrameIndex = 0;
@@ -78,6 +81,7 @@ public class TabListUpdater {
         }
         ticksSinceLastUpdate = 0;
 
+        ServerMetricsResolver.reset();
         animationTickCounter++;
         if (animationTickCounter >= TabListConfig.animationInterval) {
             animationTickCounter = 0;
@@ -185,11 +189,19 @@ public class TabListUpdater {
 
         List<ServerPlayer> players = new ArrayList<>(server.getPlayerList().getPlayers());
 
+        // Compute integration weights once per player, rather than on every comparison.
+        Map<UUID, Integer> rankPowers = new HashMap<>();
+        if ("RANK".equals(mode)) {
+            for (ServerPlayer player : players) {
+                rankPowers.put(player.getUUID(), TabListVariables.getPlayerRankPower(player));
+            }
+        }
+
         Comparator<ServerPlayer> comparator;
         //? if >=1.21.9 {
         /*if ("RANK".equals(mode)) {
             comparator = Comparator
-                    .comparingInt((ServerPlayer p) -> TabListVariables.getPlayerRankPower(p))
+                    .comparingInt((ServerPlayer p) -> rankPowers.get(p.getUUID()))
                     .reversed()
                     .thenComparing(p -> p.getGameProfile().name(), String.CASE_INSENSITIVE_ORDER);
         } else {
@@ -199,7 +211,7 @@ public class TabListUpdater {
         //?} else {
         if ("RANK".equals(mode)) {
             comparator = Comparator
-                    .comparingInt((ServerPlayer p) -> TabListVariables.getPlayerRankPower(p))
+                    .comparingInt((ServerPlayer p) -> rankPowers.get(p.getUUID()))
                     .reversed()
                     .thenComparing(p -> p.getGameProfile().getName(), String.CASE_INSENSITIVE_ORDER);
         } else {

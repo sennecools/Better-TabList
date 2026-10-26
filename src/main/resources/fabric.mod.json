@@ -6,7 +6,8 @@
   "description": "${mod_description}",
   "authors": [
     "sennecools",
-    "NeofastFTL"
+    "NeofastFTL",
+    "MihailDenisov"
   ],
   "contact": {},
   "license": "${mod_license}",
@@ -25,6 +26,8 @@
     "minecraft": "${minecraft_version_range}"
   },
   "suggests": {
-    "ftbranks": "*"
+    "ftbranks": "*",
+    "luckperms": "*",
+    "spark": "*"
   }
 }

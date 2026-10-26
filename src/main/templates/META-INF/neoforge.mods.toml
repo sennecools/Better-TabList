@@ -30,3 +30,19 @@ description='''${mod_description}'''
     versionRange="[1.0,)"
     ordering="AFTER"
     side="BOTH"
+
+[[dependencies.${mod_id}]]
+    modId="luckperms"
+    type="optional"
+    reason="Enables LuckPerms prefixes, suffixes, groups, and rank sorting"
+    versionRange="[5.4,)"
+    ordering="AFTER"
+    side="SERVER"
+
+[[dependencies.${mod_id}]]
+    modId="spark"
+    type="optional"
+    reason="Provides rolling TPS, MSPT percentiles, and CPU metrics"
+    versionRange="[1.10,)"
+    ordering="AFTER"
+    side="SERVER"

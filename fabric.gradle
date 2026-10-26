@@ -23,6 +23,11 @@ java {
 repositories {
     mavenCentral()
     maven {
+        name = 'Spark'
+        url = 'https://repo.lucko.me/'
+        content { includeModule 'me.lucko', 'spark-api' }
+    }
+    maven {
         name = 'ParchmentMC'
         url = 'https://maven.parchmentmc.org/'
     }
@@ -55,6 +60,14 @@ dependencies {
     compileOnly "dev.architectury:architectury-neoforge:${architectury_api_version}"
     compileOnly "curse.maven:ftb-library-forge-404465:6711324"
     compileOnly "curse.maven:ftb-ranks-forge-314905:6431744"
+    compileOnly "net.luckperms:api:5.4"
+    compileOnly "me.lucko:spark-api:0.1-SNAPSHOT"
+
+    testImplementation platform("org.junit:junit-bom:5.11.4")
+    testImplementation "org.junit.jupiter:junit-jupiter"
+    testImplementation "org.mockito:mockito-core:5.15.2"
+    testImplementation "net.luckperms:api:5.4"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
 }
 
 loom {
@@ -133,9 +146,13 @@ tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
 }
 
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
 publishMods {
     file = remapJar.archiveFile
-    changelog = rootProject.file("CHANGELOG.md").exists() ? rootProject.file("CHANGELOG.md").text : "Release ${project.version}"
+    changelog = rootProject.file("CHANGELOG.md").exists() ? rootProject.file("CHANGELOG.md").text.split(/(?m)(?=^## )/)[0].trim() : "Release ${project.version}"
     type = STABLE
     modLoaders.add("fabric")
     displayName = "${mod_name} ${project.version} for ${minecraft_version} [Fabric]"

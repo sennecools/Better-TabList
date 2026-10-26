@@ -4,3 +4,61 @@ plugins {
 }
 
 stonecutter.active '1.21.1-fabric' /* [SC] DO NOT EDIT */
+
+tasks.register('updateModrinthDescription') {
+    group = 'publishing'
+    description = 'Update the Modrinth project description from the README setup guide.'
+
+    doLast {
+        def token = providers.environmentVariable('MODRINTH_TOKEN').getOrNull()
+        if (!token) {
+            throw new GradleException('Set MODRINTH_TOKEN with the Modrinth PROJECT_WRITE scope.')
+        }
+
+        def readme = rootProject.file('README.md').getText('UTF-8').replace('\r\n', '\n')
+        def developmentSection = readme.indexOf('\n## Building from Source')
+        if (developmentSection < 0) {
+            throw new GradleException('README.md is missing the Building from Source section.')
+        }
+        def description = readme.split(/\n\n/)[1].trim()
+        if (description.isEmpty() || description.length() > 255) {
+            throw new GradleException('The README introductory paragraph must be 1-255 characters.')
+        }
+        def fields = [
+                description: description,
+                body       : readme.substring(0, developmentSection).trim(),
+                source_url : 'https://github.com/sennecools/Better-TabList',
+                issues_url : 'https://github.com/sennecools/Better-TabList/issues',
+        ]
+        def endpoint = java.net.URI.create('https://api.modrinth.com/v2/project/3o3inmWM')
+        def client = java.net.http.HttpClient.newHttpClient()
+        def request = java.net.http.HttpRequest.newBuilder(endpoint)
+                .timeout(java.time.Duration.ofSeconds(60))
+                .header('Authorization', token)
+                .header('User-Agent', 'sennecools/Better-TabList description updater')
+                .header('Content-Type', 'application/json; charset=utf-8')
+                .method('PATCH', java.net.http.HttpRequest.BodyPublishers.ofString(
+                        groovy.json.JsonOutput.toJson(fields), java.nio.charset.StandardCharsets.UTF_8))
+                .build()
+        def response = client.send(request, java.net.http.HttpResponse.BodyHandlers.ofString())
+        if (response.statusCode() != 204) {
+            throw new GradleException("Modrinth description update failed (HTTP ${response.statusCode()}): ${response.body()}")
+        }
+
+        def verifyRequest = java.net.http.HttpRequest.newBuilder(endpoint)
+                .timeout(java.time.Duration.ofSeconds(60))
+                .header('User-Agent', 'sennecools/Better-TabList description updater')
+                .GET().build()
+        def verification = client.send(verifyRequest, java.net.http.HttpResponse.BodyHandlers.ofString())
+        if (verification.statusCode() != 200) {
+            throw new GradleException("Unable to verify the Modrinth description (HTTP ${verification.statusCode()}).")
+        }
+        def project = new groovy.json.JsonSlurper().parseText(verification.body())
+        fields.each { key, expected ->
+            if (project[key] != expected) {
+                throw new GradleException("Modrinth description verification failed for '${key}'.")
+            }
+        }
+        logger.lifecycle('Updated and verified https://modrinth.com/mod/better-tablist')
+    }
+}

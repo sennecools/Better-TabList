@@ -1,6 +1,8 @@
 package com.sennecools.tablist;
 
 import com.sennecools.tablist.config.TabListConfig;
+import com.sennecools.tablist.config.NameFormattingProvider;
+import com.sennecools.tablist.metrics.ServerMetricsResolver;
 import com.sennecools.tablist.platform.Services;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -9,12 +11,14 @@ import net.minecraft.network.chat.Style;
 import net.minecraft.network.chat.TextColor;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.level.Level;
 
 import java.lang.management.ManagementFactory;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -36,32 +40,11 @@ public class TabListVariables {
         //?}
         if (server == null || template == null) return "";
 
-        String output = template;
+        String output = ServerMetricsResolver.replacePlaceholders(resolvePlayerPlaceholders(template, player), server);
 
         if (output.contains("#SERVERNAME")) {
             String name = TabListConfig.serverName != null ? TabListConfig.serverName : "";
             output = output.replace("#SERVERNAME", name);
-        }
-        if (output.contains("#TPS") || output.contains("#MSPT") || output.contains("#CTPS")) {
-            double mspt = getMSPT(server);
-            double tps = mspt == 0.0 ? 20.0 : Math.min(1000.0 / mspt, 20.0);
-            if (output.contains("#CTPS")) {
-                String color;
-                if (tps >= 18.0) {
-                    color = "&a";
-                } else if (tps >= 15.0) {
-                    color = "&e";
-                } else {
-                    color = "&c";
-                }
-                output = output.replace("#CTPS", color + String.format("%.1f", tps));
-            }
-            if (output.contains("#MSPT")) {
-                output = output.replace("#MSPT", String.format("%.1f", mspt));
-            }
-            if (output.contains("#TPS")) {
-                output = output.replace("#TPS", String.format("%.1f", tps));
-            }
         }
         if (output.contains("#PLAYERCOUNT")) {
             output = output.replace("#PLAYERCOUNT", String.valueOf(getPlayerCount(server)));
@@ -77,6 +60,12 @@ public class TabListVariables {
         }
         if (output.contains("#RANK")) {
             output = output.replace("#RANK", getPlayerRank(player));
+        }
+        if (output.contains("#DIMENSION")) {
+            output = output.replace("#DIMENSION", getDimensionSymbol(player));
+        }
+        if (output.contains("#HEALTH")) {
+            output = output.replace("#HEALTH", getHealthSymbol(player));
         }
         if (output.contains("#MAXPLAYERS")) {
             output = output.replace("#MAXPLAYERS", String.valueOf(server.getMaxPlayers()));
@@ -128,10 +117,10 @@ public class TabListVariables {
     }
 
     private static String buildDefaultDisplayName(ServerPlayer player) {
-        if (TabListConfig.enableFTBRanksFormatting && isFTBRanksLoaded()) {
+        if (TabListConfig.nameFormattingProvider == NameFormattingProvider.FTB && isFTBRanksLoaded()) {
             String formatted = FTBRanksIntegration.getFormattedDisplayName(player);
             if (formatted != null) {
-                return convertColorCodes(formatted);
+                return tablistChars(formatted, player);
             }
         }
 
@@ -139,24 +128,74 @@ public class TabListVariables {
         if (format == null) {
             format = "{name}";
         }
+        return tablistChars(format, player);
+    }
+
+    public static String resolvePlayerPlaceholders(String format, ServerPlayer player) {
         //? if >=1.21.9 {
         /*String result = format.replace("{name}", player.getGameProfile().name());*/
         //?} else {
         String result = format.replace("{name}", player.getGameProfile().getName());
         //?}
-        result = result.replace("{rank}", getPlayerRank(player));
-        return convertColorCodes(result);
+
+        if (result.contains("{prefix}") || result.contains("{suffix}")
+                || result.contains("{primary_group}") || result.contains("{rank}")) {
+            LuckPermsIntegration.PlayerMetaData metaData =
+                    TabListConfig.nameFormattingProvider == NameFormattingProvider.LP && isLuckPermsLoaded()
+                            ? LuckPermsIntegration.getPlayerMetaData(player)
+                            : new LuckPermsIntegration.PlayerMetaData("", "", "");
+            result = result.replace("{prefix}", metaData.prefix())
+                    .replace("{suffix}", metaData.suffix())
+                    .replace("{primary_group}", metaData.primaryGroup())
+                    .replace("{rank}", TabListConfig.nameFormattingProvider == NameFormattingProvider.LP
+                            ? metaData.primaryGroup() : getPlayerRank(player));
+        }
+
+        if (result.contains("{dimension}")) result = result.replace("{dimension}", getDimensionSymbol(player));
+        if (result.contains("{health}")) result = result.replace("{health}", getHealthSymbol(player));
+        if (result.contains("{world}")) result = result.replace("{world}", getPlayerWorld(player));
+        if (result.contains("{ping}")) result = result.replace("{ping}", String.valueOf(getPlayerPing(player)));
+        if (result.contains("{gamemode}")) {
+            result = result.replace("{gamemode}", player.gameMode.getGameModeForPlayer().getName());
+        }
+        return result;
+    }
+
+    private static String getPlayerWorld(ServerPlayer player) {
+        //? if >=1.21.11 {
+        /*return player.level().dimension().identifier().getPath();*/
+        //?} else {
+        return player.level().dimension().location().getPath();
+        //?}
+    }
+
+    private static String getDimensionSymbol(ServerPlayer player) {
+        if (Level.OVERWORLD.equals(player.level().dimension())) return "&a\u24CC&r";
+        if (Level.NETHER.equals(player.level().dimension())) return "&c\u24C3&r";
+        if (Level.END.equals(player.level().dimension())) return "&d\u24BA&r";
+        return "&7" + getPlayerWorld(player) + "&r";
+    }
+
+    private static String getHealthSymbol(ServerPlayer player) {
+        int health = Math.max(0, (int) Math.ceil(player.getHealth() + player.getAbsorptionAmount()));
+        return "&c[" + health + "\u2764]&r";
     }
 
     private static String getPlayerRank(ServerPlayer player) {
-        if (isFTBRanksLoaded()) {
+        if (TabListConfig.nameFormattingProvider == NameFormattingProvider.LP && isLuckPermsLoaded()) {
+            return LuckPermsIntegration.getPlayerMetaData(player).primaryGroup();
+        }
+        if (TabListConfig.nameFormattingProvider == NameFormattingProvider.FTB && isFTBRanksLoaded()) {
             return FTBRanksIntegration.getPlayerRankName(player);
         }
         return "";
     }
 
     static int getPlayerRankPower(ServerPlayer player) {
-        if (isFTBRanksLoaded()) {
+        if (TabListConfig.nameFormattingProvider == NameFormattingProvider.LP && isLuckPermsLoaded()) {
+            return LuckPermsIntegration.getGroupWeight(player);
+        }
+        if (TabListConfig.nameFormattingProvider == NameFormattingProvider.FTB && isFTBRanksLoaded()) {
             return FTBRanksIntegration.getPlayerRankPower(player);
         }
         return 0;
@@ -166,8 +205,8 @@ public class TabListVariables {
         return Services.PLATFORM.isModLoaded("ftbranks");
     }
 
-    private static double getMSPT(MinecraftServer server) {
-        return server.getAverageTickTimeNanos() / 1_000_000.0;
+    private static boolean isLuckPermsLoaded() {
+        return Services.PLATFORM.isModLoaded("luckperms");
     }
 
     private static int getPlayerCount(MinecraftServer server) {
@@ -177,7 +216,7 @@ public class TabListVariables {
     private static String getMemoryUsage() {
         long usedMemory = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
         long maxMemory = Runtime.getRuntime().maxMemory();
-        return String.format("%.1f MB / %.1f MB", usedMemory / 1048576.0, maxMemory / 1048576.0);
+        return String.format(Locale.ROOT, "%.1f MB / %.1f MB", usedMemory / 1048576.0, maxMemory / 1048576.0);
     }
 
     private static String getServerUptime() {
