@@ -28,7 +28,7 @@ public class TabListVariables {
     private static final Pattern COLOR_CODE_PATTERN = Pattern.compile("&([0-9a-fA-Fk-oK-OrR])");
     private static final Pattern GRADIENT_MINIMESSAGE_PATTERN = Pattern.compile("<gradient:(#[0-9a-fA-F]{6}(?::#[0-9a-fA-F]{6})+)>(.*?)</gradient>");
     private static final Pattern GRADIENT_TAB_PATTERN = Pattern.compile("<(#[0-9a-fA-F]{6})>(.*?)</(#[0-9a-fA-F]{6})>");
-    private static final Pattern HEX_CODE_IN_TEXT_PATTERN = Pattern.compile("&x(&[0-9a-fA-F]){6}");
+    private static final Pattern HEX_CODE_IN_TEXT_PATTERN = Pattern.compile("&#[0-9a-fA-F]{6}|&x(&[0-9a-fA-F]){6}");
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
 

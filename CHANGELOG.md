@@ -3,6 +3,7 @@
 - Made generated configs easier to edit with section guides, setup examples, clear timing units, and one animation frame per line.
 - Added missing config guidance while preserving custom values, comments, and legacy settings.
 - Refreshed the setup documentation and Modrinth description for the 1.6 features.
+- Fixed a `&#RRGGBB` code inside a gradient being shown as literal text.
 
 ## What's New in 1.6
 

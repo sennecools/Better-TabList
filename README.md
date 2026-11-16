@@ -259,8 +259,6 @@ JUnit 5 tests cover the color/gradient parser, config defaults, migration and re
 ./gradlew :1.21.1-fabric:test --configure-on-demand
 ```
 
-One parser test is disabled because it documents a known bug: a `&#RRGGBB` code placed inside a gradient is shown as literal text.
-
 To sync the user-facing guide above to Modrinth, set `MODRINTH_TOKEN` with the `PROJECT_WRITE` scope and run:
 
 ```sh

@@ -4,7 +4,6 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
 import net.minecraft.network.chat.TextColor;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -154,11 +153,17 @@ class TabListVariablesTest {
     }
 
     @Test
-    @Disabled("Known bug: applyGradient only strips the already-converted '&x&R&R&G&G&B&B' form, which never "
-            + "occurs at that stage, so a '&#RRGGBB' code inside a gradient is rendered as literal text.")
-    void hexColorInsideGradientIsNotShownAsText() {
-        String result = TabListVariables.convertColorCodes("<gradient:#FF0000:#0000FF>&#00FF00ab</gradient>");
-        assertEquals(RED + "a" + BLUE + "b", result);
+    void hexColorInsideGradientIsDroppedAndKeepsModifiers() {
+        // The gradient owns the colour, so "&#RRGGBB" is neither emitted nor counted as characters.
+        assertEquals(RED + "a" + BLUE + "b",
+                TabListVariables.convertColorCodes("<gradient:#FF0000:#0000FF>&#00FF00ab</gradient>"));
+        // Like a hex colour in parseColoredText, it does not end the bold that was active before it.
+        assertEquals(RED + S + "la" + BLUE + S + "lb",
+                TabListVariables.convertColorCodes("<gradient:#FF0000:#0000FF>&la&#00ff00b</gradient>"));
+        assertEquals(RED + "a" + BLUE + "b", TabListVariables.convertColorCodes("<#FF0000>a&#00FF00b</#0000FF>"));
+        // Five digits is not a hex code and stays visible.
+        assertEquals("&#00FF0", TabListVariables.convertColorCodes("<gradient:#FF0000:#0000FF>&#00FF0</gradient>")
+                .replaceAll(S + ".", ""));
     }
 
     // ---- parseColoredText ----
