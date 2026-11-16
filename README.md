@@ -245,7 +245,7 @@ For a single target:
 
 ### How it works
 
-- **One source tree, 24 JARs.** `settings.gradle` registers 12 Minecraft versions × 2 loaders as [Stonecutter](https://stonecutter.codeberg.page/) targets, each built with `fabric.gradle` (Fabric Loom) or `neoforge.gradle` (ModDevGradle). Mojang API renames between versions are handled with Stonecutter comment predicates such as `//? if >=1.21.9` in the shared code, for example `GameProfile.getName()` versus `name()`.
+- **One source tree, 24 JARs.** `settings.gradle` registers 12 Minecraft versions × 2 loaders as [Stonecutter](https://stonecutter.kikugie.dev/) targets, each built with `fabric.gradle` (Fabric Loom) or `neoforge.gradle` (ModDevGradle). Mojang API renames between versions are handled with Stonecutter comment predicates such as `//? if >=1.21.9` in the shared code, for example `GameProfile.getName()` versus `name()`.
 - **Loader differences sit behind one interface.** `platform/PlatformHelper` is loaded through `ServiceLoader`, with one implementation per loader. Tab list names come from a mixin on `ServerPlayer.getTabListDisplayName` on Fabric and from the `PlayerEvent.TabListNameFormat` event on NeoForge.
 - **Optional mods stay optional.** LuckPerms, FTB Ranks, and spark are `compileOnly` dependencies. Their classes are only touched after an `isModLoaded` check, and the spark lookup also catches `LinkageError` and falls back to the built-in measurements.
 - **Text formatting** is done in `TabListVariables`: `convertColorCodes` expands `&` codes, `&#RRGGBB`, and both gradient syntaxes into legacy `§` codes (one interpolated hex color per character for gradients), and `parseColoredText` turns that string into a styled `Component`.
