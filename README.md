@@ -1,10 +1,13 @@
 # Better TabList
+[![Modrinth downloads](https://img.shields.io/modrinth/dt/better-tablist?label=Modrinth%20downloads)](https://modrinth.com/mod/better-tablist) [![Minecraft versions](https://img.shields.io/modrinth/game-versions/better-tablist?label=Minecraft)](https://modrinth.com/mod/better-tablist/versions) [![Build](https://github.com/sennecools/Better-TabList/actions/workflows/build.yml/badge.svg)](https://github.com/sennecools/Better-TabList/actions/workflows/build.yml)
 
 A customizable, server-side tab list with animated headers and footers, rank prefixes, player status, and live server statistics.
 
 Supports **NeoForge** and **Fabric** for Minecraft **1.21–1.21.11**.
 
 **Install on the server. Players can join with vanilla clients.** LuckPerms, FTB Ranks, and spark are optional.
+
+![Example of Better TabList with FTB Ranks and Gradients](https://cdn.modrinth.com/data/3o3inmWM/images/58536bc3869b9018a0f7cc5d2fa84b2e38d836b6.png)
 
 ![Example of Better TabList with FTB Ranks](https://cdn.modrinth.com/data/3o3inmWM/images/2cf58e8c05e52c0fc875141cfd76afdb5da15d20.png)
 
@@ -239,6 +242,24 @@ For a single target:
 ```sh
 ./gradlew :1.21.1-neoforge:build --configure-on-demand
 ```
+
+### How it works
+
+- **One source tree, 24 JARs.** `settings.gradle` registers 12 Minecraft versions × 2 loaders as [Stonecutter](https://stonecutter.codeberg.page/) targets, each built with `fabric.gradle` (Fabric Loom) or `neoforge.gradle` (ModDevGradle). Mojang API renames between versions are handled with Stonecutter comment predicates such as `//? if >=1.21.9` in the shared code, for example `GameProfile.getName()` versus `name()`.
+- **Loader differences sit behind one interface.** `platform/PlatformHelper` is loaded through `ServiceLoader`, with one implementation per loader. Tab list names come from a mixin on `ServerPlayer.getTabListDisplayName` on Fabric and from the `PlayerEvent.TabListNameFormat` event on NeoForge.
+- **Optional mods stay optional.** LuckPerms, FTB Ranks, and spark are `compileOnly` dependencies. Their classes are only touched after an `isModLoaded` check, and the spark lookup also catches `LinkageError` and falls back to the built-in measurements.
+- **Text formatting** is done in `TabListVariables`: `convertColorCodes` expands `&` codes, `&#RRGGBB`, and both gradient syntaxes into legacy `§` codes (one interpolated hex color per character for gradients), and `parseColoredText` turns that string into a styled `Component`.
+- **Sorting** assigns players to numbered scoreboard teams (`tl_…`); players already on another team are left alone.
+
+### Tests
+
+JUnit 5 tests cover the color/gradient parser, config defaults, migration and reload, the metrics placeholders and spark fallback, and the LuckPerms lookup. They are part of `build` for every target, and GitHub Actions builds all 24 targets on each push and pull request. To run them for one target:
+
+```sh
+./gradlew :1.21.1-fabric:test --configure-on-demand
+```
+
+One parser test is disabled because it documents a known bug: a `&#RRGGBB` code placed inside a gradient is shown as literal text.
 
 To sync the user-facing guide above to Modrinth, set `MODRINTH_TOKEN` with the `PROJECT_WRITE` scope and run:
 
