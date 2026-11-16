@@ -272,8 +272,15 @@ class TabListVariablesTest {
 
     @Test
     void truncatedOrInvalidHexSequenceDoesNotThrowAndKeepsFollowingText() {
-        Component truncated = assertDoesNotThrow(() -> TabListVariables.parseColoredText(S + "x" + S + "F"));
-        assertNotNull(truncated);
+        // Too short to be a hex colour: "§x" is not a code, so it stays as text like any unknown code,
+        // and the "§F" after it is still read as an ordinary (white) colour code.
+        Component truncated = assertDoesNotThrow(() -> TabListVariables.parseColoredText(S + "x" + S + "FHi"));
+        assertEquals(S + "xHi", truncated.getString());
+        List<Component> truncatedParts = truncated.getSiblings();
+        assertEquals(2, truncatedParts.size());
+        assertNull(truncatedParts.get(0).getStyle().getColor());
+        assertEquals("Hi", truncatedParts.get(1).getString());
+        assertEquals(TextColor.fromLegacyFormat(ChatFormatting.WHITE), truncatedParts.get(1).getStyle().getColor());
 
         // 14 characters long but with a non-hex digit: not a colour, the text after it must survive.
         Component invalid = assertDoesNotThrow(() -> TabListVariables.parseColoredText(hex("FF55ZZ") + "Hi"));
