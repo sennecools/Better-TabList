@@ -23,7 +23,7 @@ jobs:
       LABEL: minecraft-update
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Find releases missing from settings.gradle
         id: find
