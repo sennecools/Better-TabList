@@ -1,0 +1,133 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      publish_modrinth:
+        description: Publish every target to Modrinth
+        type: boolean
+        default: true
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and release
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      PUBLISH_MODRINTH: ${{ github.event_name == 'push' || inputs.publish_modrinth }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve version
+        id: version
+        env:
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+        run: |
+          prop() { sed -n "s/^$1=//p" gradle.properties | tr -d '\r' | head -n 1; }
+          version=$(prop mod_version)
+          name=$(prop mod_name)
+          if [[ -z $version ]]; then
+            echo "::error::mod_version is missing from gradle.properties"
+            exit 1
+          fi
+
+          if [[ $GITHUB_REF_TYPE == tag ]]; then tag=$GITHUB_REF_NAME; else tag="v$version"; fi
+          if [[ $GITHUB_REF_TYPE == tag && ${tag#v} != "$version" ]]; then
+            echo "::error::Tag $tag does not match mod_version=$version in gradle.properties"
+            exit 1
+          fi
+
+          if [[ $PUBLISH_MODRINTH == true && -z $MODRINTH_TOKEN ]]; then
+            echo "::error::The MODRINTH_TOKEN repository secret is not set. Add it under Settings > Secrets and variables > Actions, or run this workflow manually with publish_modrinth unchecked."
+            exit 1
+          fi
+
+          echo "Releasing ${name:-Tab List} $version as $tag (Modrinth: $PUBLISH_MODRINTH)"
+          {
+            echo "version=$version"
+            echo "tag=$tag"
+            echo "title=${name:-Tab List} $version"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Set up JDK 21 and 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: |
+            21
+            25
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: true
+
+      - name: Build all targets
+        run: ./gradlew build --stacktrace
+
+      - name: Collect jars
+        run: |
+          mkdir -p dist
+          for jar in versions/*/build/libs/*.jar; do
+            case $jar in *-sources.jar | *-dev.jar) continue ;; esac
+            cp "$jar" dist/
+          done
+          ls -1 dist
+          expected=$(bash scripts/ci/list-targets.sh --plain | wc -l)
+          actual=$(find dist -name '*.jar' | wc -l)
+          if (( actual != expected )); then
+            echo "::error::Expected $expected jars (one per target), found $actual"
+            exit 1
+          fi
+
+      - name: Extract release notes
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          tr -d '\r' < CHANGELOG.md | awk '/^## /{ if (seen) exit; seen = 1; print > "heading.txt"; next } seen' > release-notes.md
+          if ! grep -qF "$VERSION" heading.txt 2>/dev/null; then
+            echo "::warning::The top CHANGELOG.md section is not for $VERSION: $(cat heading.txt 2>/dev/null)"
+          fi
+          [[ -s release-notes.md ]] || echo "Release $VERSION" > release-notes.md
+          cat release-notes.md
+
+      - name: Upload jars
+        uses: actions/upload-artifact@v4
+        with:
+          name: tablist-${{ steps.version.outputs.version }}
+          path: dist/*.jar
+          if-no-files-found: error
+
+      # The GitHub release goes first because this step is idempotent (view/edit/upload --clobber);
+      # Modrinth rejects re-uploads, so it runs last. A failed GitHub step can then be re-run without
+      # publishing anything to Modrinth. If publishMods fails partway, upload the missing targets by
+      # hand: a plain re-run would publish every target again.
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+          TITLE: ${{ steps.version.outputs.title }}
+        run: |
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            gh release edit "$TAG" --title "$TITLE" --notes-file release-notes.md
+            gh release upload "$TAG" dist/*.jar --clobber
+          else
+            gh release create "$TAG" dist/*.jar --title "$TITLE" --notes-file release-notes.md --target "$GITHUB_SHA"
+          fi
+          echo "Released $TITLE: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/$TAG" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publish to Modrinth
+        if: env.PUBLISH_MODRINTH == 'true'
+        env:
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+        run: ./gradlew publishMods --stacktrace

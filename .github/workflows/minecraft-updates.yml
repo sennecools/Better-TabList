@@ -1,0 +1,90 @@
+name: Minecraft version watch
+
+on:
+  schedule:
+    - cron: '23 6 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: minecraft-version-watch
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    name: Check for new Minecraft releases
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+      LABEL: minecraft-update
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Find releases missing from settings.gradle
+        id: find
+        run: |
+          curl -fsSL --retry 3 https://piston-meta.mojang.com/mc/game/version_manifest_v2.json -o manifest.json
+          known=$(bash scripts/ci/list-targets.sh --versions | jq -R . | jq -sc .)
+          new=$(jq -c --argjson known "$known" '
+            ([.versions[] | select(.id | IN($known[])) | .releaseTime] | max) as $newest
+            | if $newest == null then error("none of the versions in settings.gradle are in the Mojang manifest") else
+                [.versions[]
+                  | select(.type == "release" and .releaseTime > $newest and (.id | IN($known[]) | not))]
+                | sort_by(.releaseTime) | map(.id)
+              end' manifest.json)
+          echo "Supported: $(jq -r 'join(", ")' <<<"$known")"
+          echo "Unsupported newer releases: $(jq -r 'if length == 0 then "none" else join(", ") end' <<<"$new")"
+          echo "versions=$new" >> "$GITHUB_OUTPUT"
+          echo "count=$(jq length <<<"$new")" >> "$GITHUB_OUTPUT"
+
+      - name: Open or update the tracking issue
+        if: steps.find.outputs.count != '0'
+        env:
+          NEW_VERSIONS: ${{ steps.find.outputs.versions }}
+        run: |
+          latest=$(jq -r 'last' <<<"$NEW_VERSIONS")
+          listed=$(jq -r 'join(", ")' <<<"$NEW_VERSIONS")
+          marker="<!-- minecraft-versions: $listed -->"
+          title="Support Minecraft $latest"
+
+          {
+            echo "$marker"
+            echo "Mojang has released Minecraft versions that \`settings.gradle\` does not target yet:"
+            echo
+            jq -r '.[] | "- **\(.)**"' <<<"$NEW_VERSIONS"
+            echo
+            echo "Fabric API and NeoForge builds may take a few days to appear after a Minecraft release."
+            for v in $(jq -r '.[]' <<<"$NEW_VERSIONS"); do
+              echo
+              echo "### Minecraft $v"
+              echo
+              echo "- [ ] Add \`versions/$v-fabric/gradle.properties\` and \`versions/$v-neoforge/gradle.properties\`"
+              echo "- [ ] Register \`version '$v-fabric', '$v'\` and \`version '$v-neoforge', '$v'\` in \`settings.gradle\`"
+              echo "- [ ] Build: \`./gradlew :$v-fabric:build :$v-neoforge:build --configure-on-demand\`"
+              echo "- [ ] Smoke test: \`bash scripts/ci/server-smoke-test.sh $v-fabric\` and \`bash scripts/ci/server-smoke-test.sh $v-neoforge\`"
+            done
+            echo
+            echo "### Release"
+            echo
+            echo "- [ ] Add the new version(s) to the Minecraft dropdown in \`.github/ISSUE_TEMPLATE/bug_report.yml\`"
+            echo "- [ ] Update the supported versions in \`README.md\` and \`CHANGELOG.md\`"
+            echo "- [ ] Bump \`mod_version\` in \`gradle.properties\` and push a \`v<version>\` tag to publish to Modrinth and GitHub Releases"
+          } > issue.md
+
+          gh label create "$LABEL" --color 5EBA7D --description "A new Minecraft release needs support" > /dev/null 2>&1 || true
+          number=$(gh issue list --label "$LABEL" --state open --limit 1 --json number --jq '.[0].number // empty')
+
+          if [[ -z $number ]]; then
+            gh issue create --title "$title" --body-file issue.md --label "$LABEL"
+          elif gh issue view "$number" --json body --jq .body | grep -qF "$marker"; then
+            echo "Issue #$number already tracks $listed"
+          else
+            # Only rewrite the body when the version list changes, so ticked checkboxes are kept otherwise.
+            gh issue edit "$number" --title "$title" --body-file issue.md
+            gh issue comment "$number" --body "Minecraft $latest is out. This issue now tracks: $listed."
+          fi
