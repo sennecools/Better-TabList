@@ -1,0 +1,16 @@
+# Gradient showcase: a bold gradient title, a personal welcome and a compact status footer.
+[appearance]
+server_name = "Aurora SMP"
+header = [
+    "#N<gradient:#FF5F6D:#FFC371>&l✦ #SERVERNAME ✦</gradient>&r#N&7Welcome back, &f#PLAYERNAME&7!#N"
+]
+footer = [
+    "#N&7Online &f#PLAYERCOUNT&8/&f#MAXPLAYERS  &8┃  &7Ping &f#PING ms  &8┃  &7TPS #CTPS#N<gradient:#4FACFE:#00F2FE>play.example.net</gradient>#N"
+]
+name_formatting_provider = "NONE"
+display_name_format = "{dimension} &f{name} {health} &7#AFK"
+update_interval = 500
+animation_interval = 4
+
+[sorting]
+sort_mode = "ALPHABETICAL"

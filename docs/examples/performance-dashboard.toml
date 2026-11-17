@@ -1,0 +1,17 @@
+# Performance dashboard: live, color-coded server health for admins and modpack servers.
+# Install spark and set metrics_provider = "SPARK" for rolling TPS and MSPT percentiles.
+[appearance]
+server_name = "Aurora SMP"
+header = [
+    "#N&#4FACFE&lSERVER MONITOR#N&8#DATE  #TIME#N"
+]
+footer = [
+    "#N&7TPS #CTPS  &8│  &7MSPT #CMSPT  &8│  &7CPU #CCPU#N&7Memory &f#MEMORY  &8│  &7Uptime &f#UPTIME#N"
+]
+name_formatting_provider = "NONE"
+display_name_format = "&f{name} &8[&7{ping}ms&8]"
+update_interval = 1000
+animation_interval = 4
+
+[performance]
+metrics_provider = "VANILLA"
