@@ -309,7 +309,9 @@ public class TabListVariables {
                 // Standard color codes
                 ChatFormatting formatting = getFormatting(code);
                 if (formatting != null) {
-                    if (formatting.isColor()) {
+                    // Color codes are exactly the hex digits (&0-&9, &a-&f). Checked on the code
+                    // because ChatFormatting.isColor() was removed in Minecraft 26.2.
+                    if (isHexChar(code)) {
                         // Reset formatting modifiers when applying a new color
                         currentStyle = Style.EMPTY.withColor(formatting);
                     } else if (formatting == ChatFormatting.RESET) {
