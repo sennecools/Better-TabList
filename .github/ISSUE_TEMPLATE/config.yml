@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Download on Modrinth
+    url: https://modrinth.com/mod/better-tablist
+    about: Latest releases, changelogs and supported versions.

@@ -1,0 +1,96 @@
+name: Bug report
+description: Something in the tab list does not work as expected.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. Please check the [FAQ](https://github.com/sennecools/Better-TabList#faq) and existing issues first.
+
+  - type: dropdown
+    id: minecraft
+    attributes:
+      label: Minecraft version
+      options:
+        - '26.3'
+        - '26.2'
+        - '26.1.2'
+        - '26.1.1'
+        - '26.1'
+        - '1.21.11'
+        - '1.21.10'
+        - '1.21.9'
+        - '1.21.8'
+        - '1.21.7'
+        - '1.21.6'
+        - '1.21.5'
+        - '1.21.4'
+        - '1.21.3'
+        - '1.21.2'
+        - '1.21.1'
+        - '1.21'
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: loader
+    attributes:
+      label: Mod loader
+      options:
+        - Fabric
+        - NeoForge
+    validations:
+      required: true
+
+  - type: input
+    id: mod-version
+    attributes:
+      label: Better TabList version
+      description: Shown in the jar name, for example `tablist-fabric-26.3-1.7.jar`.
+      placeholder: '1.7'
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: integrations
+    attributes:
+      label: Installed integrations
+      description: Tick everything that is installed on the server.
+      options:
+        - label: LuckPerms
+        - label: FTB Ranks
+        - label: spark
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Describe the problem and what you expected to happen instead. Screenshots help.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Set `header` in config/tablist.toml to ...
+        2. Run /tablist reload
+        3. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: config
+    attributes:
+      label: Config
+      description: The relevant part of `config/tablist.toml`.
+      render: toml
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Errors from `logs/latest.log`, or a link to a paste site for long logs.
+      render: shell

@@ -1,0 +1,17 @@
+# Survival status: every name shows dimension, health, ping and game mode at a glance.
+[appearance]
+server_name = "Aurora SMP"
+header = [
+    "#N&a&l#SERVERNAME &r&7— Survival#N"
+]
+footer = [
+    "#N&7You are in &f#WORLD &7with #HEALTH#N"
+]
+name_formatting_provider = "NONE"
+display_name_format = "{dimension} &e{name} &8│ {health} &8│ &7{ping}ms &8│ &7{gamemode} &7#AFK"
+update_interval = 500
+animation_interval = 4
+
+[afk]
+afk_enabled = true
+afk_timeout = 300

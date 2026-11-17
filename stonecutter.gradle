@@ -15,18 +15,33 @@ tasks.register('updateModrinthDescription') {
             throw new GradleException('Set MODRINTH_TOKEN with the Modrinth PROJECT_WRITE scope.')
         }
 
+        // README.md is the single source for the Modrinth page:
+        //  - everything after <!-- modrinth-end --> (development docs) is left out,
+        //  - <!-- github-only --> ... <!-- /github-only --> blocks (GitHub header, badges, navigation) are removed,
+        //  - repo-relative docs/ links and images are rewritten to absolute GitHub URLs,
+        //  - the first plain paragraph becomes the short Modrinth summary.
         def readme = rootProject.file('README.md').getText('UTF-8').replace('\r\n', '\n')
-        def developmentSection = readme.indexOf('\n## Building from Source')
-        if (developmentSection < 0) {
-            throw new GradleException('README.md is missing the Building from Source section.')
+        def end = readme.indexOf('<!-- modrinth-end -->')
+        if (end < 0) {
+            throw new GradleException('README.md is missing the <!-- modrinth-end --> marker.')
         }
-        def description = readme.split(/\n\n/)[1].trim()
-        if (description.isEmpty() || description.length() > 255) {
+        def rawBase = 'https://raw.githubusercontent.com/sennecools/Better-TabList/main/'
+        def blobBase = 'https://github.com/sennecools/Better-TabList/blob/main/'
+        def body = readme.substring(0, end)
+                .replaceAll(/(?s)<!-- github-only -->.*?<!-- \/github-only -->\n*/, '')
+                .replaceAll(/(!\[[^\]]*\]\()(docs\/)/, '$1' + rawBase + '$2')
+                .replaceAll(/(src=")(docs\/)/, '$1' + rawBase + '$2')
+                .replaceAll(/(\]\()(docs\/)/, '$1' + blobBase + '$2')
+                .replaceAll(/(href=")(docs\/)/, '$1' + blobBase + '$2')
+                .trim()
+        def description = body.split(/\n\n/).collect { it.trim() }
+                .find { it && !(it ==~ /(?s)^[#<!\[|>`-].*/) }
+        if (!description || description.length() > 255) {
             throw new GradleException('The README introductory paragraph must be 1-255 characters.')
         }
         def fields = [
                 description: description,
-                body       : readme.substring(0, developmentSection).trim(),
+                body       : body,
                 source_url : 'https://github.com/sennecools/Better-TabList',
                 issues_url : 'https://github.com/sennecools/Better-TabList/issues',
         ]

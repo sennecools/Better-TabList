@@ -1,0 +1,15 @@
+# Animated and minimal: three frames that cycle every ~2 seconds, nothing else.
+[appearance]
+server_name = "Aurora SMP"
+header = [
+    "#N&f&l#SERVERNAME#N",
+    "#N&#FFC371&l#SERVERNAME#N",
+    "#N&#FF5F6D&l#SERVERNAME#N"
+]
+footer = [
+    "#N&7#PLAYERCOUNT online  &8·  &7discord.gg/example#N"
+]
+name_formatting_provider = "NONE"
+display_name_format = "&f{name}"
+update_interval = 500
+animation_interval = 4

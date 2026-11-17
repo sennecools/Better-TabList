@@ -1,5 +1,6 @@
-## Unreleased
+## What's New in 1.7
 
+- Added support for Minecraft 26.1, 26.1.1, 26.1.2, 26.2 and 26.3 on Fabric and NeoForge.
 - Made generated configs easier to edit with section guides, setup examples, clear timing units, and one animation frame per line.
 - Added missing config guidance while preserving custom values, comments, and legacy settings.
 - Refreshed the setup documentation and Modrinth description for the 1.6 features.
